@@ -4,7 +4,7 @@ trigger:
       - nonroot
 
 pool:
-  vmImage: self-hosted-linux
+  name: self-hosted-linux
 
 variables:
   acrName: day1sample
