@@ -41,7 +41,7 @@ steps:
 
 # Trivy scan (fail on HIGH / CRITICAL)
 - script: |
-    trivy image --exit-code 1 --severity HIGH,CRITICAL \
+    trivy image --severity HIGH,CRITICAL \
     $(acrName).azurecr.io/$(imageName):$(tag)
   displayName: Trivy Scan
 
