@@ -1,0 +1,51 @@
+trigger:
+  branches:
+    include:
+      - nonroot
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  acrName: day1sample
+  imageName: dotnet-monolith
+  tag: $(Build.BuildId)
+
+steps:
+- checkout: self
+
+# Login to Azure & ACR
+- task: AzureCLI@2
+  displayName: Login to ACR
+  inputs:
+    azureSubscription: Azure-Service-Connection
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      az acr login --name $(acrName)
+
+# Build Docker image
+- script: |
+    docker build -t $(acrName).azurecr.io/$(imageName):$(tag) .
+  displayName: Docker Build
+
+# Install Trivy
+- script: |
+    sudo apt-get update
+    sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+    echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+    sudo apt-get update
+    sudo apt-get install -y trivy
+  displayName: Install Trivy
+
+# Trivy scan (fail on HIGH / CRITICAL)
+- script: |
+    trivy image --exit-code 1 --severity HIGH,CRITICAL \
+    $(acrName).azurecr.io/$(imageName):$(tag)
+  displayName: Trivy Scan
+
+# Push image to ACR
+- script: |
+    docker push $(acrName).azurecr.io/$(imageName):$(tag)
+  displayName: Push to ACR
