@@ -10,49 +10,47 @@ variables:
   acrName: day1sample
   imageName: dotnet-monolith
   tag: $(Build.BuildId)
+  namespace: dev
 
 steps:
 - checkout: self
 
-# Login to Azure & ACR
-- task: AzureCLI@2
-  displayName: Login to ACR
-  inputs:
-    azureSubscription: Azure-Service-Connection
-    scriptType: bash
-    scriptLocation: inlineScript
-    inlineScript: |
-      az acr login --name $(acrName)
+# Login to ACR
+- script: |
+    echo "$(ACR_PASSWORD)" | docker login \
+      $(acrName).azurecr.io \
+      -u "$(ACR_USERNAME)" \
+      --password-stdin
+  displayName: Docker Login to ACR
 
 # Build Docker image
 - script: |
     docker build -t $(acrName).azurecr.io/$(imageName):$(tag) .
   displayName: Docker Build
 
-# Install Trivy
+# Trivy Scan (non-blocking)
 - script: |
-    sudo apt-get update
-    sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-    echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-    sudo apt-get update
-    sudo apt-get install -y trivy
-  displayName: Install Trivy
-
-# Trivy scan (fail on HIGH / CRITICAL)
-- script: |
-    echo "Starting Trivy scan (forced non-blocking)"
-    set +e
     trivy image --severity HIGH,CRITICAL \
-    $(acrName).azurecr.io/$(imageName):$(tag)
-    TRIVY_EXIT_CODE=$?
-    echo "Trivy exit code was: $TRIVY_EXIT_CODE"
-    echo "Continuing pipeline regardless of vulnerabilities"
-    exit 0
-  displayName: Trivy Scan (forced non-blocking)
+      $(acrName).azurecr.io/$(imageName):$(tag) || true
+  displayName: Trivy Scan
 
-
-# Push image to ACR
+# Push image
 - script: |
     docker push $(acrName).azurecr.io/$(imageName):$(tag)
-  displayName: Push to ACR
+  displayName: Push Image to ACR
+
+# Deploy to AKS
+- task: KubernetesManifest@1
+  displayName: Deploy to AKS
+  inputs:
+    action: deploy
+    kubernetesServiceConnection: aks-connection
+    namespace: $(namespace)
+    manifests: |
+      k8s/namespace.yaml
+      k8s/deployment.yaml
+      k8s/service.yaml
+      k8s/ingress.yaml
+    containers: |
+      $(acrName).azurecr.io/$(imageName):$(tag)
+
