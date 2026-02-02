@@ -6,11 +6,18 @@ trigger:
 pool:
   name: self-hosted-linux
 
+# 🔐 Link variable group
 variables:
-  acrName: day1sample
-  imageName: dotnet-monolith
-  tag: $(Build.BuildId)
-  namespace: dev
+- group: acr-secrets
+
+- name: acrName
+  value: day1sample
+- name: imageName
+  value: dotnet-monolith
+- name: tag
+  value: $(Build.BuildId)
+- name: namespace
+  value: dev
 
 steps:
 - checkout: self
@@ -48,9 +55,9 @@ steps:
     namespace: $(namespace)
     manifests: |
       k8s/namespace.yaml
+      k8s/secretproviderclass.yaml
       k8s/deployment.yaml
       k8s/service.yaml
       k8s/ingress.yaml
     containers: |
       $(acrName).azurecr.io/$(imageName):$(tag)
-
