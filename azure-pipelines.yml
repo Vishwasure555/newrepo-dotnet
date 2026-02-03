@@ -22,7 +22,7 @@ variables:
 steps:
 - checkout: self
 
-# 🔐 Login to ACR (FIXED)
+# 🔐 Login to ACR
 - script: |
     echo "$ACR_PASSWORD" | docker login \
       $(acrName).azurecr.io \
@@ -44,7 +44,7 @@ steps:
       $(acrName).azurecr.io/$(imageName):$(tag) || true
   displayName: Trivy Scan
 
-# Push image
+# Push image to ACR
 - script: |
     docker push $(acrName).azurecr.io/$(imageName):$(tag)
   displayName: Push Image to ACR
@@ -56,6 +56,7 @@ steps:
     action: deploy
     kubernetesServiceConnection: aks-connection
     namespace: $(namespace)
+    rolloutStatusTimeout: 180
     manifests: |
       k8s/namespace.yaml
       k8s/secretproviderclass.yaml
