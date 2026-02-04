@@ -37,6 +37,9 @@ steps:
     projectName: 'dotnet-api'
     extraProperties: |
       sonar.branch.name=
+      sonar.pullrequest.key=
+      sonar.pullrequest.branch=
+      sonar.pullrequest.base=
 
 # 2️⃣ Restore
 - task: DotNetCoreCLI@2
