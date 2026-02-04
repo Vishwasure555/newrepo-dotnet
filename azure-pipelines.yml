@@ -35,6 +35,8 @@ steps:
     scannerMode: 'dotnet'
     projectKey: 'my-app'
     projectName: 'dotnet-api'
+    extraProperties: |
+      sonar.branch.name=
 
 # 2️⃣ Restore
 - task: DotNetCoreCLI@2
