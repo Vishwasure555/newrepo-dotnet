@@ -4,7 +4,7 @@ pool:
   name: self-hosted-linux
 
 steps:
-- task: SonarQubePrepare@5
+- task: SonarQubePrepare@7
   inputs:
     SonarQube: 'SonarQube-Service'
     scannerMode: 'MSBuild'
