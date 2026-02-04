@@ -1,12 +1,119 @@
-trigger: none
+trigger:
+  branches:
+    include:
+      - nonroot
 
 pool:
   name: self-hosted-linux
 
+# 🔐 Variable group
+variables:
+- group: acr-secrets
+
+- name: acrName
+  value: day1sample
+- name: imageName
+  value: dotnet-monolith
+- name: tag
+  value: $(Build.BuildId)
+- name: namespace
+  value: dev
+- name: buildConfiguration
+  value: Release
+
 steps:
+- checkout: self
+
+# =========================
+# 🧪 SONARQUBE ANALYSIS
+# =========================
+
+# 1️⃣ Prepare SonarQube
 - task: SonarQubePrepare@7
   inputs:
     SonarQube: 'SonarQube-Service'
-    scannerMode: 'MSBuild'
-    projectKey: 'my-application'
-    projectName: 'My application'
+    scannerMode: 'dotnet'
+    projectKey: 'my-app'
+    projectName: 'dotnet-api'
+
+# 2️⃣ Restore
+- task: DotNetCoreCLI@2
+  displayName: dotnet restore
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
+
+# 3️⃣ Build
+- task: DotNetCoreCLI@2
+  displayName: dotnet build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+# 4️⃣ Test (recommended)
+- task: DotNetCoreCLI@2
+  displayName: dotnet test
+  inputs:
+    command: test
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
+
+# 5️⃣ Analyze
+- task: SonarQubeAnalyze@7
+
+# 6️⃣ Quality Gate (pipeline FAILS if gate fails)
+- task: SonarQubePublish@7
+  inputs:
+    pollingTimeoutSec: '300'
+
+# =========================
+# 🐳 DOCKER + SECURITY
+# =========================
+
+# 🔐 Login to ACR
+- script: |
+    echo "$ACR_PASSWORD" | docker login \
+      $(acrName).azurecr.io \
+      -u "$ACR_USERNAME" \
+      --password-stdin
+  displayName: Docker Login to ACR
+  env:
+    ACR_USERNAME: $(ACR_USERNAME)
+    ACR_PASSWORD: $(ACR_PASSWORD)
+
+# Build Docker image
+- script: |
+    docker build -t $(acrName).azurecr.io/$(imageName):$(tag) .
+  displayName: Docker Build
+
+# Trivy Scan (non-blocking)
+- script: |
+    trivy image --severity HIGH,CRITICAL \
+      $(acrName).azurecr.io/$(imageName):$(tag) || true
+  displayName: Trivy Scan
+
+# Push image to ACR
+- script: |
+    docker push $(acrName).azurecr.io/$(imageName):$(tag)
+  displayName: Push Image to ACR
+
+# =========================
+# ☸️ AKS DEPLOYMENT
+# =========================
+
+- task: KubernetesManifest@1
+  displayName: Deploy to AKS
+  inputs:
+    action: deploy
+    kubernetesServiceConnection: aks-connection
+    namespace: $(namespace)
+    rolloutStatusTimeout: 180
+    manifests: |
+      k8s/namespace.yaml
+      k8s/secretproviderclass.yaml
+      k8s/deployment.yaml
+      k8s/service.yaml
+      k8s/ingress.yaml
+    containers: |
+      $(acrName).azurecr.io/$(imageName):$(tag)
