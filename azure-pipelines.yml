@@ -6,7 +6,7 @@ trigger:
 pool:
   name: self-hosted-linux
 
-# 🔐 Link ACR secrets variable group
+# 🔐 Variable group
 variables:
 - group: acr-secrets
 
@@ -18,9 +18,58 @@ variables:
   value: $(Build.BuildId)
 - name: namespace
   value: dev
+- name: buildConfiguration
+  value: Release
 
 steps:
 - checkout: self
+
+# =========================
+# 🧪 SONARQUBE ANALYSIS
+# =========================
+
+# 1️⃣ Prepare SonarQube
+- task: SonarQubePrepare@5
+  inputs:
+    SonarQube: 'SonarQube-Service'
+    scannerMode: 'MSBuild'
+    projectKey: 'my-app'
+    projectName: 'dotnet-api'
+
+# 2️⃣ Restore
+- task: DotNetCoreCLI@2
+  displayName: dotnet restore
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
+
+# 3️⃣ Build
+- task: DotNetCoreCLI@2
+  displayName: dotnet build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+# 4️⃣ Test (recommended)
+- task: DotNetCoreCLI@2
+  displayName: dotnet test
+  inputs:
+    command: test
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
+
+# 5️⃣ Analyze
+- task: SonarQubeAnalyze@5
+
+# 6️⃣ Quality Gate (pipeline FAILS if gate fails)
+- task: SonarQubePublish@5
+  inputs:
+    pollingTimeoutSec: '300'
+
+# =========================
+# 🐳 DOCKER + SECURITY
+# =========================
 
 # 🔐 Login to ACR
 - script: |
@@ -49,7 +98,10 @@ steps:
     docker push $(acrName).azurecr.io/$(imageName):$(tag)
   displayName: Push Image to ACR
 
-# Deploy to AKS
+# =========================
+# ☸️ AKS DEPLOYMENT
+# =========================
+
 - task: KubernetesManifest@1
   displayName: Deploy to AKS
   inputs:
