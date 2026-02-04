@@ -29,7 +29,7 @@ steps:
 # =========================
 
 # 1️⃣ Prepare SonarQube
-- task: SonarQubeCommunityBuildPrepare@5
+- task: SonarQubeCommunityBuildPrepare@1
   inputs:
     SonarQube: 'SonarQube-Service'
     scannerMode: 'MSBuild'
