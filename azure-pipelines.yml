@@ -29,7 +29,7 @@ steps:
 # =========================
 
 # 1️⃣ Prepare SonarQube
-- task: SonarQubePrepare@5
+- task: SonarQubeCommunityBuildPrepare@5
   inputs:
     SonarQube: 'SonarQube-Service'
     scannerMode: 'MSBuild'
@@ -60,10 +60,10 @@ steps:
     arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
 
 # 5️⃣ Analyze
-- task: SonarQubeAnalyze@5
+- task: SonarQubeCommunityBuildAnalyze@1
 
 # 6️⃣ Quality Gate (pipeline FAILS if gate fails)
-- task: SonarQubePublish@5
+- task: SonarQubeCommunityBuildPublish@1
   inputs:
     pollingTimeoutSec: '300'
 
