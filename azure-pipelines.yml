@@ -28,7 +28,7 @@ steps:
 # ☁️ SONARCLOUD ANALYSIS
 # =========================
 
-- task: SonarCloudPrepare@1
+- task: SonarCloudPrepare@4
   displayName: Prepare SonarCloud analysis
   inputs:
     SonarCloud: 'SonarCloud-Service'
@@ -57,10 +57,10 @@ steps:
     projects: '**/*Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
 
-- task: SonarCloudAnalyze@1
+- task: SonarCloudAnalyze@4
   displayName: Run SonarCloud analysis
 
-- task: SonarCloudPublish@1
+- task: SonarCloudPublish@4
   displayName: Publish SonarCloud Quality Gate
   inputs:
     pollingTimeoutSec: '300'
