@@ -7,7 +7,7 @@ steps:
 - checkout: self
   fetchDepth: 0
 
-# 1️⃣ Prepare SonarCloud
+# 1️⃣ Prepare SonarCloud (force same working dir)
 - task: SonarCloudPrepare@4
   inputs:
     SonarCloud: 'SonarCloud-Service'
@@ -15,17 +15,20 @@ steps:
     scannerMode: 'dotnet'
     projectKey: 'vishwasureshkumar9950121_aks-zero-touch'
     projectName: 'aks-zero-touch'
+  workingDirectory: $(Build.SourcesDirectory)
 
-# 2️⃣ Create solution + build (CRITICAL FIX)
+# 2️⃣ Restore + Build (same directory)
 - script: |
-    dotnet new sln -n temp-sonar
-    dotnet sln temp-sonar.sln add dotnet-folder.csproj
-    dotnet restore temp-sonar.sln
-    dotnet build temp-sonar.sln --configuration Release
-  displayName: Create SLN and Build for SonarCloud
+    pwd
+    ls -la
+    dotnet restore dotnet-folder.csproj
+    dotnet build dotnet-folder.csproj --configuration Release
+  displayName: Restore & Build (.NET)
+  workingDirectory: $(Build.SourcesDirectory)
 
-# 3️⃣ Analyze
+# 3️⃣ Analyze (same directory)
 - task: SonarCloudAnalyze@4
+  workingDirectory: $(Build.SourcesDirectory)
 
 # 4️⃣ Publish Quality Gate
 - task: SonarCloudPublish@4
