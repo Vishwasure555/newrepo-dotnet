@@ -7,6 +7,7 @@ steps:
 - checkout: self
   fetchDepth: 0
 
+# 1️⃣ Prepare SonarCloud
 - task: SonarCloudPrepare@4
   inputs:
     SonarCloud: 'SonarCloud-Service'
@@ -15,8 +16,25 @@ steps:
     projectKey: 'vishwasureshkumar9950121_aks-zero-touch'
     projectName: 'aks-zero-touch'
 
+# 2️⃣ Restore (csproj at repo root)
+- task: DotNetCoreCLI@2
+  displayName: dotnet restore
+  inputs:
+    command: restore
+    projects: 'dotnet-folder.csproj'
+
+# 3️⃣ Build (MANDATORY for SonarCloud)
+- task: DotNetCoreCLI@2
+  displayName: dotnet build
+  inputs:
+    command: build
+    projects: 'dotnet-folder.csproj'
+    arguments: '--configuration Release'
+
+# 4️⃣ Analyze
 - task: SonarCloudAnalyze@4
 
+# 5️⃣ Publish Quality Gate
 - task: SonarCloudPublish@4
   inputs:
     pollingTimeoutSec: '300'
