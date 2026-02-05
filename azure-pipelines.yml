@@ -16,11 +16,13 @@ steps:
     projectKey: 'vishwasureshkumar9950121_aks-zero-touch'
     projectName: 'aks-zero-touch'
 
-# 2️⃣ Restore + Build (SCRIPT — IMPORTANT)
+# 2️⃣ Create solution + build (CRITICAL FIX)
 - script: |
-    dotnet restore dotnet-folder.csproj
-    dotnet build dotnet-folder.csproj --configuration Release
-  displayName: Restore & Build (.NET)
+    dotnet new sln -n temp-sonar
+    dotnet sln temp-sonar.sln add dotnet-folder.csproj
+    dotnet restore temp-sonar.sln
+    dotnet build temp-sonar.sln --configuration Release
+  displayName: Create SLN and Build for SonarCloud
 
 # 3️⃣ Analyze
 - task: SonarCloudAnalyze@4
