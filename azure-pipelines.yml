@@ -7,28 +7,27 @@ steps:
 - checkout: self
   fetchDepth: 0
 
-# 1️⃣ Prepare SonarCloud (force same working dir)
+# 1️⃣ Prepare SonarCloud (CLI MODE)
 - task: SonarCloudPrepare@4
   inputs:
     SonarCloud: 'SonarCloud-Service'
     organization: 'vishwa2102'
-    scannerMode: 'dotnet'
-    projectKey: 'vishwasureshkumar9950121_aks-zero-touch'
-    projectName: 'aks-zero-touch'
-  workingDirectory: $(Build.SourcesDirectory)
+    scannerMode: 'CLI'
+    configMode: 'manual'
+    cliProjectKey: 'vishwasureshkumar9950121_aks-zero-touch'
+    cliProjectName: 'aks-zero-touch'
+    cliSources: '.'
+    extraProperties: |
+      sonar.language=cs
+      sonar.sourceEncoding=UTF-8
 
-# 2️⃣ Restore + Build (same directory)
+# 2️⃣ (Optional) Build – only for validation, not for Sonar
 - script: |
-    pwd
-    ls -la
-    dotnet restore dotnet-folder.csproj
     dotnet build dotnet-folder.csproj --configuration Release
-  displayName: Restore & Build (.NET)
-  workingDirectory: $(Build.SourcesDirectory)
+  displayName: Build (.NET)
 
-# 3️⃣ Analyze (same directory)
+# 3️⃣ Run analysis
 - task: SonarCloudAnalyze@4
-  workingDirectory: $(Build.SourcesDirectory)
 
 # 4️⃣ Publish Quality Gate
 - task: SonarCloudPublish@4
