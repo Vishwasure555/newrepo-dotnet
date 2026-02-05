@@ -4,18 +4,11 @@ trigger:
       - main
       - nonroot
 
-pool:
-  name: self-hosted-linux
-
 steps:
 - checkout: self
   fetchDepth: 0
 
-# =========================
-# ☁️ SONARCLOUD (CLI MODE)
-# =========================
 - task: SonarCloudPrepare@4
-  displayName: Prepare SonarCloud (CLI)
   inputs:
     SonarCloud: 'SonarCloud-Service'
     organization: 'vishwa2102'
@@ -24,20 +17,10 @@ steps:
     cliProjectKey: 'vishwasureshkumar9950121_aks-zero-touch'
     cliProjectName: 'aks-zero-touch'
     cliSources: '.'
-    extraProperties: |
-      sonar.language=cs
-      sonar.sourceEncoding=UTF-8
 
-# (Optional) Build — NOT used by Sonar
-- script: |
-    dotnet build dotnet-folder.csproj --configuration Release
-  displayName: Build (.NET)
-
-# IMPORTANT: This Analyze task now runs **CLI scanner**
 - task: SonarCloudAnalyze@4
-  displayName: Run SonarCloud CLI analysis
 
 - task: SonarCloudPublish@4
-  displayName: Publish Quality Gate
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
   inputs:
     pollingTimeoutSec: '300'
