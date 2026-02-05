@@ -25,27 +25,24 @@ steps:
 - checkout: self
 
 # =========================
-# 🧪 SONARQUBE ANALYSIS
+# ☁️ SONARCLOUD ANALYSIS
 # =========================
 
-# 1️⃣ Prepare SonarQube
-- task: SonarQubePrepare@7
+- task: SonarCloudPrepare@1
+  displayName: Prepare SonarCloud analysis
   inputs:
-    SonarQube: 'SonarQube-Service'
+    SonarCloud: 'SonarCloud-Service'
+    organization: 'vishwa2102'
     scannerMode: 'dotnet'
-    projectKey: 'my-app'
-    projectName: 'dotnet-api'
-    extraProperties: |
-      sonar.branch.name=main
+    projectKey: 'vishwasureshkumar9950121_aks-zero-touch'
+    projectName: 'aks-zero-touch'
 
-# 2️⃣ Restore
 - task: DotNetCoreCLI@2
   displayName: dotnet restore
   inputs:
     command: restore
     projects: '**/*.csproj'
 
-# 3️⃣ Build
 - task: DotNetCoreCLI@2
   displayName: dotnet build
   inputs:
@@ -53,7 +50,6 @@ steps:
     projects: '**/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
 
-# 4️⃣ Test (recommended)
 - task: DotNetCoreCLI@2
   displayName: dotnet test
   inputs:
@@ -61,11 +57,11 @@ steps:
     projects: '**/*Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
 
-# 5️⃣ Analyze
-- task: SonarQubeAnalyze@7
+- task: SonarCloudAnalyze@1
+  displayName: Run SonarCloud analysis
 
-# 6️⃣ Quality Gate (pipeline FAILS if gate fails)
-- task: SonarQubePublish@7
+- task: SonarCloudPublish@1
+  displayName: Publish SonarCloud Quality Gate
   inputs:
     pollingTimeoutSec: '300'
 
@@ -73,7 +69,6 @@ steps:
 # 🐳 DOCKER + SECURITY
 # =========================
 
-# 🔐 Login to ACR
 - script: |
     echo "$ACR_PASSWORD" | docker login \
       $(acrName).azurecr.io \
@@ -84,18 +79,15 @@ steps:
     ACR_USERNAME: $(ACR_USERNAME)
     ACR_PASSWORD: $(ACR_PASSWORD)
 
-# Build Docker image
 - script: |
     docker build -t $(acrName).azurecr.io/$(imageName):$(tag) .
   displayName: Docker Build
 
-# Trivy Scan (non-blocking)
 - script: |
     trivy image --severity HIGH,CRITICAL \
       $(acrName).azurecr.io/$(imageName):$(tag) || true
   displayName: Trivy Scan
 
-# Push image to ACR
 - script: |
     docker push $(acrName).azurecr.io/$(imageName):$(tag)
   displayName: Push Image to ACR
