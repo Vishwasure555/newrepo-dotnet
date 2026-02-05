@@ -7,8 +7,11 @@ steps:
 - checkout: self
   fetchDepth: 0
 
-# 1️⃣ Prepare SonarCloud (CLI MODE)
+# =========================
+# ☁️ SONARCLOUD (CLI MODE)
+# =========================
 - task: SonarCloudPrepare@4
+  displayName: Prepare SonarCloud (CLI)
   inputs:
     SonarCloud: 'SonarCloud-Service'
     organization: 'vishwa2102'
@@ -21,15 +24,16 @@ steps:
       sonar.language=cs
       sonar.sourceEncoding=UTF-8
 
-# 2️⃣ (Optional) Build – only for validation, not for Sonar
+# (Optional) Build — NOT used by Sonar
 - script: |
     dotnet build dotnet-folder.csproj --configuration Release
   displayName: Build (.NET)
 
-# 3️⃣ Run analysis
+# IMPORTANT: This Analyze task now runs **CLI scanner**
 - task: SonarCloudAnalyze@4
+  displayName: Run SonarCloud CLI analysis
 
-# 4️⃣ Publish Quality Gate
 - task: SonarCloudPublish@4
+  displayName: Publish Quality Gate
   inputs:
     pollingTimeoutSec: '300'
