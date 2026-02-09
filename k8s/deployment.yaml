@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: myapp
-        image: day1sample.azurecr.io/dotnet-monolith:latest
+        image: day1sample.azurecr.io/dotnet-monolith
         ports:
         - containerPort: 8080
         env:
