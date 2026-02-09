@@ -2,6 +2,10 @@ grafana:
   adminPassword: admin123
   service:
     type: ClusterIP
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana"
+      serve_from_sub_path: true
 
 prometheus:
   prometheusSpec:
