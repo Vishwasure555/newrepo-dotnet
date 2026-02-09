@@ -3,13 +3,10 @@ kind: Service
 metadata:
   name: myapp-service
   namespace: dev
-  labels:
-    app: myapp
 spec:
   selector:
     app: myapp
   ports:
-    - name: http          # 👈 REQUIRED for ServiceMonitor
-      port: 80
+    - port: 80
       targetPort: 8080
   type: ClusterIP
