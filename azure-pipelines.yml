@@ -1,26 +1,97 @@
 trigger:
   branches:
     include:
-      - main
       - nonroot
+
+pool:
+  name: self-hosted-linux
+
+# 🔐 Variable group
+variables:
+- group: acr-secrets
+
+- name: acrName
+  value: day1sample
+- name: imageName
+  value: dotnet-monolith
+- name: tag
+  value: $(Build.BuildId)
+- name: namespace
+  value: dev
+- name: buildConfiguration
+  value: Release
 
 steps:
 - checkout: self
   fetchDepth: 0
 
-- task: SonarCloudPrepare@4
-  inputs:
-    SonarCloud: 'SonarCloud-Service'
-    organization: 'vishwa2102'
-    scannerMode: 'CLI'
-    configMode: 'manual'
-    cliProjectKey: 'vishwasureshkumar9950121_aks-zero-touch'
-    cliProjectName: 'aks-zero-touch'
-    cliSources: '.'
+# =========================
+# 🧪 .NET BUILD & TEST
+# =========================
 
-- task: SonarCloudAnalyze@4
-
-- task: SonarCloudPublish@4
-  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+- task: DotNetCoreCLI@2
+  displayName: dotnet restore
   inputs:
-    pollingTimeoutSec: '300'
+    command: restore
+    projects: '**/*.csproj'
+
+- task: DotNetCoreCLI@2
+  displayName: dotnet build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: dotnet test
+  inputs:
+    command: test
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
+
+# =========================
+# 🐳 DOCKER + SECURITY
+# =========================
+
+- script: |
+    echo "$ACR_PASSWORD" | docker login \
+      $(acrName).azurecr.io \
+      -u "$ACR_USERNAME" \
+      --password-stdin
+  displayName: Docker Login to ACR
+  env:
+    ACR_USERNAME: $(ACR_USERNAME)
+    ACR_PASSWORD: $(ACR_PASSWORD)
+
+- script: |
+    docker build -t $(acrName).azurecr.io/$(imageName):$(tag) .
+  displayName: Docker Build
+
+- script: |
+    trivy image --severity HIGH,CRITICAL \
+      $(acrName).azurecr.io/$(imageName):$(tag) || true
+  displayName: Trivy Scan
+
+- script: |
+    docker push $(acrName).azurecr.io/$(imageName):$(tag)
+  displayName: Push Image to ACR
+
+# =========================
+# ☸️ AKS DEPLOYMENT
+# =========================
+
+- task: KubernetesManifest@1
+  displayName: Deploy to AKS
+  inputs:
+    action: deploy
+    kubernetesServiceConnection: aks-connection
+    namespace: $(namespace)
+    rolloutStatusTimeout: 180
+    manifests: |
+      k8s/namespace.yaml
+      k8s/secretproviderclass.yaml
+      k8s/deployment.yaml
+      k8s/service.yaml
+      k8s/ingress.yaml
+    containers: |
+      $(acrName).azurecr.io/$(imageName):$(tag)
