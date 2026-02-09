@@ -13,7 +13,7 @@ variables:
 - name: acrName
   value: day1sample
 - name: imageName
-  value: myapp
+  value: dotnet-monolith
 - name: tag
   value: $(Build.BuildId)
 - name: buildConfiguration
