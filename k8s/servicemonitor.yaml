@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dotnet-monolith
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: dotnet-monolith
+  namespaceSelector:
+    matchNames:
+      - dev
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
