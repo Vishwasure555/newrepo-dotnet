@@ -1,3 +1,111 @@
+trigger:
+  branches:
+    include:
+      - nonroot
+
+pool:
+  name: self-hosted-linux
+
+# 🔐 Variable group
+variables:
+- group: acr-secrets
+
+- name: acrName
+  value: day1sample
+- name: imageName
+  value: myapp
+- name: tag
+  value: $(Build.BuildId)
+- name: buildConfiguration
+  value: Release
+
+steps:
+# =========================
+# 📥 CHECKOUT
+# =========================
+- checkout: self
+  fetchDepth: 0
+
+# =========================
+# 🧪 .NET BUILD & TEST
+# =========================
+- task: DotNetCoreCLI@2
+  displayName: dotnet restore
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
+
+- task: DotNetCoreCLI@2
+  displayName: dotnet build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: dotnet test
+  inputs:
+    command: test
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+# =========================
+# 🐳 DOCKER + SECURITY
+# =========================
+- script: |
+    echo "$ACR_PASSWORD" | docker login \
+      $(acrName).azurecr.io \
+      -u "$ACR_USERNAME" \
+      --password-stdin
+  displayName: Docker Login to ACR
+  env:
+    ACR_USERNAME: $(ACR_USERNAME)
+    ACR_PASSWORD: $(ACR_PASSWORD)
+
+- script: |
+    docker build -t $(acrName).azurecr.io/$(imageName):$(tag) .
+  displayName: Docker Build
+
+- script: |
+    trivy image --severity HIGH,CRITICAL \
+      $(acrName).azurecr.io/$(imageName):$(tag) || true
+  displayName: Trivy Scan
+
+- script: |
+    docker push $(acrName).azurecr.io/$(imageName):$(tag)
+  displayName: Push Image to ACR
+
+# =========================
+# 📦 HELM – PROMETHEUS & GRAFANA
+# =========================
+- task: HelmInstaller@1
+  displayName: Install Helm
+  inputs:
+    helmVersionToInstall: latest
+
+- script: |
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+  displayName: Add Prometheus Helm Repo
+
+- task: HelmDeploy@0
+  displayName: Deploy Prometheus & Grafana
+  inputs:
+    connectionType: Kubernetes Service Connection
+    kubernetesServiceConnection: aks-connection
+    namespace: monitoring
+    command: upgrade
+    chartType: Name
+    chartName: prometheus-community/kube-prometheus-stack
+    releaseName: monitoring
+    install: true
+    arguments: >
+      --create-namespace
+      -f helm/monitoring-values.yaml
+
+# =========================
+# ☸️ AKS DEPLOYMENT (APP → dev)
+# =========================
 - task: KubernetesManifest@1
   displayName: Deploy App to AKS (dev)
   inputs:
@@ -13,3 +121,15 @@
       k8s/secretproviderclass.yaml
     containers: |
       $(acrName).azurecr.io/$(imageName):$(tag)
+
+# =========================
+# 📊 AKS DEPLOYMENT (MONITORING → monitoring)
+# =========================
+- task: KubernetesManifest@1
+  displayName: Deploy ServiceMonitor (monitoring)
+  inputs:
+    action: deploy
+    kubernetesServiceConnection: aks-connection
+    namespace: monitoring
+    manifests: |
+      k8s/servicemonitor.yaml
