@@ -22,13 +22,15 @@ variables:
   value: Release
 
 steps:
+# =========================
+# 📥 CHECKOUT
+# =========================
 - checkout: self
   fetchDepth: 0
 
 # =========================
 # 🧪 .NET BUILD & TEST
 # =========================
-
 - task: DotNetCoreCLI@2
   displayName: dotnet restore
   inputs:
@@ -52,7 +54,6 @@ steps:
 # =========================
 # 🐳 DOCKER + SECURITY
 # =========================
-
 - script: |
     echo "$ACR_PASSWORD" | docker login \
       $(acrName).azurecr.io \
@@ -77,11 +78,33 @@ steps:
   displayName: Push Image to ACR
 
 # =========================
+# 📦 HELM (PROMETHEUS + GRAFANA)
+# =========================
+- task: HelmInstaller@1
+  displayName: Install Helm
+  inputs:
+    helmVersionToInstall: latest
+
+- task: HelmDeploy@0
+  displayName: Deploy Prometheus & Grafana
+  inputs:
+    connectionType: Kubernetes Service Connection
+    kubernetesServiceConnection: aks-connection
+    namespace: monitoring
+    command: upgrade
+    chartType: Name
+    chartName: prometheus-community/kube-prometheus-stack
+    releaseName: monitoring
+    install: true
+    arguments: >
+      --create-namespace
+      -f helm/monitoring-values.yaml
+
+# =========================
 # ☸️ AKS DEPLOYMENT
 # =========================
-
 - task: KubernetesManifest@1
-  displayName: Deploy to AKS
+  displayName: Deploy App to AKS
   inputs:
     action: deploy
     kubernetesServiceConnection: aks-connection
@@ -93,5 +116,6 @@ steps:
       k8s/deployment.yaml
       k8s/service.yaml
       k8s/ingress.yaml
+      k8s/servicemonitor.yaml
     containers: |
       $(acrName).azurecr.io/$(imageName):$(tag)
