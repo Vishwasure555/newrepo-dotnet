@@ -6,7 +6,6 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: grafana.20-40-125-197.nip.io
     - http:
         paths:
           - path: /grafana
