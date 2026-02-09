@@ -11,3 +11,5 @@ prometheus:
   prometheusSpec:
     retention: 10d
     scrapeInterval: 15s
+    externalUrl: http://20.40.125.197/prometheus
+    routePrefix: /prometheus
