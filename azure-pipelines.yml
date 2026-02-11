@@ -27,27 +27,39 @@ steps:
   fetchDepth: 0
 
 # =========================
-# 🧪 .NET BUILD & TEST
+# 🔍 SONARCLOUD PREPARE (v4)
+# =========================
+- task: SonarCloudPrepare@4
+  displayName: Prepare SonarCloud Analysis
+  inputs:
+    SonarCloud: 'sonarcloud-connection'
+    organization: 'your-org-key'          # 🔁 replace
+    scannerMode: 'dotnet'
+    projectKey: 'your-project-key'        # 🔁 replace
+    projectName: 'dotnet-monolith'
+
+# =========================
+# 🧪 .NET TEST (build happens here automatically)
 # =========================
 - task: DotNetCoreCLI@2
-  displayName: dotnet restore
-  inputs:
-    command: restore
-    projects: '**/*.csproj'
-
-- task: DotNetCoreCLI@2
-  displayName: dotnet build
-  inputs:
-    command: build
-    projects: '**/*.csproj'
-    arguments: '--configuration $(buildConfiguration)'
-
-- task: DotNetCoreCLI@2
-  displayName: dotnet test
+  displayName: dotnet test with coverage
   inputs:
     command: test
     projects: '**/*Tests/*.csproj'
-    arguments: '--configuration $(buildConfiguration)'
+    arguments: >
+      --configuration $(buildConfiguration)
+      --collect:"XPlat Code Coverage"
+
+# =========================
+# 📊 SONARCLOUD ANALYZE (v4)
+# =========================
+- task: SonarCloudAnalyze@4
+  displayName: Run SonarCloud Analysis
+
+- task: SonarCloudPublish@4
+  displayName: Publish Quality Gate Result
+  inputs:
+    pollingTimeoutSec: '300'
 
 # =========================
 # 🐳 DOCKER + SECURITY
