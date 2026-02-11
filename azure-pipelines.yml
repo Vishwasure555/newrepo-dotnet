@@ -33,9 +33,9 @@ steps:
   displayName: Prepare SonarCloud Analysis
   inputs:
     SonarCloud: 'sonarcloud-connection'
-    organization: 'your-org-key'          # 🔁 replace
+    organization: 'vishwa2102'          # 🔁 replace
     scannerMode: 'dotnet'
-    projectKey: 'your-project-key'        # 🔁 replace
+    projectKey: 'vishwasureshkumar9950121_aks-zero-touch'        # 🔁 replace
     projectName: 'dotnet-monolith'
 
 # =========================
