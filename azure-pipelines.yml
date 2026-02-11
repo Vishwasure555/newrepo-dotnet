@@ -6,7 +6,7 @@ trigger:
 pool:
   name: self-hosted-linux
 
-# 🔐 Variable group
+# Variable group
 variables:
 - group: acr-secrets
 
@@ -20,15 +20,12 @@ variables:
   value: Release
 
 steps:
-# =========================
-# 📥 CHECKOUT
-# =========================
+# CHECKOUT
 - checkout: self
   fetchDepth: 0
 
-# =========================
-# 🔍 SONARCLOUD PREPARE (v4)
-# =========================
+
+# SONARCLOUD PREPARE (v4)
 - task: SonarCloudPrepare@4
   displayName: Prepare SonarCloud Analysis
   inputs:
@@ -38,18 +35,18 @@ steps:
     projectKey: 'vishwasureshkumar9950121_aks-zero-touch'
     projectName: 'dotnet-monolith'
 
-# =========================
-# 📦 RESTORE
-# =========================
+
+#  RESTORE
+
 - task: DotNetCoreCLI@2
   displayName: dotnet restore
   inputs:
     command: restore
     projects: '**/*.csproj'
 
-# =========================
-# 🏗 BUILD (MANDATORY FOR SONAR)
-# =========================
+
+# BUILD (MANDATORY FOR SONAR)
+
 - task: DotNetCoreCLI@2
   displayName: dotnet build
   inputs:
@@ -57,9 +54,9 @@ steps:
     projects: '**/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
 
-# =========================
-# 🧪 TEST WITH COVERAGE
-# =========================
+
+#  TEST WITH COVERAGE
+
 - task: DotNetCoreCLI@2
   displayName: dotnet test with coverage
   inputs:
@@ -69,9 +66,9 @@ steps:
       --configuration $(buildConfiguration)
       --collect:"XPlat Code Coverage"
 
-# =========================
-# 📊 SONARCLOUD ANALYZE (v4)
-# =========================
+
+# SONARCLOUD ANALYZE (v4)
+
 - task: SonarCloudAnalyze@4
   displayName: Run SonarCloud Analysis
 
@@ -80,9 +77,9 @@ steps:
   inputs:
     pollingTimeoutSec: '300'
 
-# =========================
-# 🐳 DOCKER + SECURITY
-# =========================
+
+#  DOCKER + SECURITY
+
 - script: |
     echo "$ACR_PASSWORD" | docker login \
       $(acrName).azurecr.io \
@@ -106,9 +103,9 @@ steps:
     docker push $(acrName).azurecr.io/$(imageName):$(tag)
   displayName: Push Image to ACR
 
-# =========================
-# 📦 HELM – PROMETHEUS & GRAFANA
-# =========================
+
+#  HELM – PROMETHEUS & GRAFANA
+
 - task: HelmInstaller@1
   displayName: Install Helm
   inputs:
@@ -134,9 +131,9 @@ steps:
       --create-namespace
       -f helm/monitoring-values.yaml
 
-# =========================
-# ☸️ AKS DEPLOYMENT (APP → dev)
-# =========================
+
+#  AKS DEPLOYMENT 
+
 - task: KubernetesManifest@1
   displayName: Deploy App to AKS (dev)
   inputs:
@@ -153,9 +150,9 @@ steps:
     containers: |
       $(acrName).azurecr.io/$(imageName):$(tag)
 
-# =========================
-# 📊 AKS DEPLOYMENT (MONITORING → monitoring)
-# =========================
+
+# 📊 AKS DEPLOYMENT (MONITORING)
+
 - task: KubernetesManifest@1
   displayName: Deploy ServiceMonitor (monitoring)
   inputs:
